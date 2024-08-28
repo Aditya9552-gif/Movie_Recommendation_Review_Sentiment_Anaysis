@@ -30,7 +30,7 @@ To run this project locally, follow the steps below:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Aditya2710-Aditya/Movie_Recommendation_Review_Sentiment.git
+   git clone https://github.com/Aditya9552-gif/Movie_Recommendation_Review_Sentiment_Anaysis.git
    cd movierecommendation-sentiment
 
 2. Create a virtual environment:
