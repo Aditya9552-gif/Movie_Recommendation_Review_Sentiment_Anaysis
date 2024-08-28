@@ -43,9 +43,9 @@ To run this project locally, follow the steps below:
      pip install -r requirements.txt
 
 5. Navigate to the final_app.py file and run it to start the local server:
-     python final_app.py
+     python app.py
 
-6. Open your web browser and go to http://127.0.0.1:5000/ to interact with the application.
+
      
 ## Usage
 Movie Recommendation
