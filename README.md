@@ -2,7 +2,7 @@
 
 This repository contains the code and resources for a movie recommendation and review sentiment analysis project. The project includes a recommendation system that suggests movies based on user preferences and a sentiment analysis tool that analyzes movie reviews to determine the sentiment (positive, negative, neutral).
 
-The project has been deployed and can be accessed online at [Movie Recommendation and Review Sentiment Analysis](https://movie-recommendation-review-sentiment.onrender.com/).
+The project has been deployed and can be accessed online at [Movie Recommendation and Review Sentiment Analysis](https://huggingface.co/spaces/Aditya9552/Movie_Recommendation_and_Sentiment_Analysis).
 
 ## Table of Contents
 - [Project Overview](#project-overview)
@@ -64,7 +64,7 @@ Preprocessing
 *  Recommend.ipynb: Developed recommended system based on the extracted data from preprocessing files.
   
 ## Deployment
-The project is deployed using Render. You can access the live version of the application [here](https://movie-recommendation-review-sentiment.onrender.com/).
+The project is deployed using huggingface. You can access the live version of the application [here](https://huggingface.co/spaces/Aditya9552/Movie_Recommendation_and_Sentiment_Analysis).
 
 To deploy the project yourself, follow these steps:
 
