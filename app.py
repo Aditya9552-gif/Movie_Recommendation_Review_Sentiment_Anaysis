@@ -34,21 +34,74 @@ def get_imdb_id(tmdb_id):
     data = response.json()
     return data.get('imdb_id')
 
-def scrape_imdb_reviews(imdb_id):
+
+def scrape_imdb_reviews(imdb_movie_id):
+    base_imdb_url = "https://www.imdb.com"
+    reviews_found = []
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+
     try:
-        sauce = urllib.request.urlopen(f'https://www.imdb.com/title/{imdb_id}/reviews?ref_=tt_ov_rt').read()
-        soup = BeautifulSoup(sauce, 'lxml')
-        soup_result = soup.find_all("div", {"class": "text show-more__control"})
-        
-        reviews_list = [review.text.strip() for review in soup_result if review.text]
-        
-        if len(reviews_list) > 10:
-            reviews_list = random.sample(reviews_list, 10)
-        
-        return reviews_list
+        if not imdb_movie_id:
+            return []
+
+        reviews_url = f"{base_imdb_url}/title/{imdb_movie_id}/reviews"
+        reviews_response = requests.get(reviews_url, headers=headers)
+        reviews_response.raise_for_status()
+        reviews_soup = BeautifulSoup(reviews_response.text, 'html.parser')
+
+        review_card_parents = reviews_soup.find_all('div', attrs={'data-testid': 'review-card-parent'})
+        for review_parent_div in review_card_parents:
+            review_text_div = review_parent_div.find('div', class_='ipc-html-content-inner-div')
+            if review_text_div:
+                text = review_text_div.get_text(strip=True)
+                if text:
+                    reviews_found.append(text)
+
+        pagination_key = None
+        load_more_container = reviews_soup.find('div', class_='load-more-reviews')
+        if load_more_container:
+            load_more_button = load_more_container.find('button', class_='ipc-btn')
+            if load_more_button and 'data-key' in load_more_button.attrs:
+                pagination_key = load_more_button['data-key']
+
+        while pagination_key:
+            ajax_url = f"{base_imdb_url}/title/{imdb_movie_id}/reviews/_ajax?ref_=undefined&paginationKey={pagination_key}"
+            time.sleep(random.uniform(1.5, 3.5))
+            ajax_response = requests.get(ajax_url, headers=headers)
+            ajax_response.raise_for_status()
+            ajax_soup = BeautifulSoup(ajax_response.text, 'html.parser')
+            new_review_card_parents = ajax_soup.find_all('div', attrs={'data-testid': 'review-card-parent'})
+
+            if not new_review_card_parents:
+                break
+
+            for review_parent_div in new_review_card_parents:
+                review_text_div = review_parent_div.find('div', class_='ipc-html-content-inner-div')
+                if review_text_div:
+                    text = review_text_div.get_text(strip=True)
+                    if text:
+                        reviews_found.append(text)
+
+            next_load_more_container = ajax_soup.find('div', class_='load-more-reviews')
+            if next_load_more_container:
+                next_load_more_button = next_load_more_container.find('button', class_='ipc-btn')
+                if next_load_more_button and 'data-key' in next_load_more_button.attrs:
+                    pagination_key = next_load_more_button['data-key']
+                else:
+                    pagination_key = None
+            else:
+                pagination_key = None
+
     except Exception as e:
-        print(f"Error occurred while scraping IMDb reviews: {str(e)}")
-        return []
+        print(f"Error while scraping IMDb reviews: {e}")
+
+    if len(reviews_found) > 10:
+        return random.sample(reviews_found, 10)
+    return reviews_found
+
+
 
 def predict_sentiment(reviews):
     cleaned_reviews = [clean_text(review) for review in reviews]
@@ -99,40 +152,53 @@ def recommend(movie):
         recommended_movie_names.append(movies.iloc[i[0]].movie_title)
     return recommended_movie_names, recommended_movie_posters
 
-st.header('Movie Recommendation and Reviews Sentiment Analysis')
+st.header('🎬 Movie Recommendation and Review Sentiment Analysis')
 
-selected_movie = st.selectbox("Type or select a movie from the dropdown", movies['movie_title'].values)
+selected_movie = st.selectbox("🎞️ Select a movie", movies['movie_title'].values)
 
-if st.button('Show Recommendation'):
-    st.subheader('Recommended Movies:')
+if st.button('🔍 Show Recommendation & Analyze Reviews'):
+    st.subheader('📽️ Recommended Movies Based on Your Selection:')
     recommended_movie_names, recommended_movie_posters = recommend(selected_movie)
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.image(recommended_movie_posters[0])
-        st.write(recommended_movie_names[0])
-    with col2:
-        st.image(recommended_movie_posters[1])
-        st.write(recommended_movie_names[1])
-    with col3:
-        st.image(recommended_movie_posters[2])
-        st.write(recommended_movie_names[2])
-    with col4:
-        st.image(recommended_movie_posters[3])
-        st.write(recommended_movie_names[3])
-    with col5:
-        st.image(recommended_movie_posters[4])
-        st.write(recommended_movie_names[4])
+    cols = st.columns(5)
 
-    st.header('Reviews Sentiment Analysis:')
+    for i in range(5):
+        with cols[i]:
+            poster = recommended_movie_posters[i] if recommended_movie_posters[i] else "https://via.placeholder.com/150x225?text=No+Image"
+            st.image(poster, use_container_width=True)  # ✅ FIX: no deprecated use_column_width
+            st.caption(recommended_movie_names[i])
+
+    st.markdown("---")
+    st.header('🗣️ Sentiment Analysis from IMDb Reviews')
+
     movie_id = movies[movies['movie_title'] == selected_movie].iloc[0]['movie_id']
     imdb_id = get_imdb_id(movie_id)
+
     if imdb_id:
         reviews = scrape_imdb_reviews(imdb_id)
         if reviews:
             sentiments = predict_sentiment(reviews)
-            df_sentiments = pd.DataFrame({'Review': reviews, 'Sentiment': sentiments})
-            st.table(df_sentiments)
+
+            st.markdown("### 🧾 Reviews and Sentiments")
+            for review, sentiment in zip(reviews, sentiments):
+                if sentiment == 'Positive':
+                    sentiment_bg = '#155724'  # dark green
+                    sentiment_text = '#ffffff'
+                else:
+                    sentiment_bg = '#721c24'  # dark red
+                    sentiment_text = '#ffffff'
+
+                st.markdown(f"""
+                    <div style="background-color:{sentiment_bg}; color:{sentiment_text}; 
+                                padding:10px; border-radius:6px; margin-bottom:5px; font-weight:bold;">
+                        Sentiment: {sentiment}
+                    </div>
+                    <div style="background-color:#ffffff; color:#000000; 
+                                padding:10px; border-radius:6px; border:1px solid #ccc; margin-bottom:20px;">
+                        {review}
+                    </div>
+                """, unsafe_allow_html=True)
+
         else:
-            st.warning("No reviews found for this movie on IMDb.")
+            st.warning("⚠️ No reviews found for this movie on IMDb.")
     else:
-        st.error("Failed to fetch IMDb ID for the selected movie.")
+        st.error("❌ Failed to fetch IMDb ID for the selected movie.")
